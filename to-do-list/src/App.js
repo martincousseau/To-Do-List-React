@@ -1,20 +1,27 @@
 import "./App.css";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
-function Task({ taskNumber, onDelete }) {
+function Task({ task, onDelete, onToggle }) {
   return (
     <div>
-      <li>I'm task number: {taskNumber}</li>
-      <button onClick={() => onDelete(taskNumber)}>Delete</button>
+      <input
+        type="checkbox"
+        checked={task.completed}
+        onChange={() => onToggle(task.id)}
+      />
+      <span style={{ textDecoration: task.completed ? "line-through" : "none" }}>
+        {task.name}
+      </span>
+      <button onClick={() => onDelete(task.id)}>Delete</button>
     </div>
   );
 }
 
-function TaskList({ tasks, onDelete }) {
+function TaskList({ tasks, onDelete, onToggle }) {
   return (
     <ul>
-      {tasks.map((task, index) => (
-        <Task key={index} taskNumber={task} onDelete={onDelete} />
+      {tasks.map((task) => (
+        <Task key={task.id} task={task} onDelete={onDelete} onToggle={onToggle} />
       ))}
     </ul>
   );
@@ -26,8 +33,8 @@ function AddTask({ onAdd }) {
   function handleSubmit(event) {
     event.preventDefault();
     if (inputValue.trim() === "") return;
-    onAdd(inputValue); // Envoie la nouvelle tâche au parent (App)
-    setInputValue(""); // Réinitialise l'input après ajout
+    onAdd(inputValue);
+    setInputValue("");
   }
 
   return (
@@ -45,21 +52,37 @@ function AddTask({ onAdd }) {
 }
 
 function App() {
-  const [tasks, setTasks] = useState([]); // État qui stocke la liste des tâches
+  const [tasks, setTasks] = useState(() => {
+    const savedTasks = localStorage.getItem("tasks");
+    return savedTasks ? JSON.parse(savedTasks) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+  }, [tasks]);
 
   function addTask(taskName) {
-    setTasks((prevTasks) => [...prevTasks, taskName]); // Mise à jour correcte du state
+    const newTask = { id: Date.now(), name: taskName, completed: false };
+    setTasks((prevTasks) => [...prevTasks, newTask]);
   }
 
-  function deleteTask(taskToDelete) {
-    setTasks((prevTasks) => prevTasks.filter((task) => task !== taskToDelete));
+  function deleteTask(taskId) {
+    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+  }
+
+  function toggleTask(taskId) {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId ? { ...task, completed: !task.completed } : task
+      )
+    );
   }
 
   return (
     <div className="App">
       <h1>To-Do List</h1>
       <AddTask onAdd={addTask} />
-      <TaskList tasks={tasks} onDelete={deleteTask} />
+      <TaskList tasks={tasks} onDelete={deleteTask} onToggle={toggleTask} />
     </div>
   );
 }
